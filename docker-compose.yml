@@ -7,7 +7,7 @@
 #
 # Prerequisites:
 #   - Docker Desktop / OrbStack running
-#   - .env.local file present (copy from .env.local.example)
+#   - .env.local file present (generated automatically by start.sh)
 #   - Repos cloned (run ./start.sh to do this automatically)
 ###############################################################################
 
@@ -45,7 +45,7 @@ services:
       retries: 5
 
   # ---------------------------------------------------------------------------
-  # PostgreSQL — Dagster metadata database (separate instance, same network)
+  # PostgreSQL — Dagster metadata database
   # ---------------------------------------------------------------------------
   dagster-postgres:
     image: postgres:17.6
@@ -67,7 +67,7 @@ services:
       retries: 5
 
   # ---------------------------------------------------------------------------
-  # Zookeeper (required by Kafka)
+  # Zookeeper
   # ---------------------------------------------------------------------------
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
@@ -137,8 +137,8 @@ services:
     image: axllent/mailpit:latest
     container_name: simpl-mailpit
     ports:
-      - "1026:1025"   # SMTP
-      - "8027:8025"   # Web UI
+      - "1026:1025"
+      - "8027:8025"
     networks:
       - dagster_network
 
@@ -158,8 +158,7 @@ services:
       - dagster_network
 
   # ---------------------------------------------------------------------------
-  # Dagster — webserver (GraphQL API + UI)
-  # Hostname: docker_dagster_webserver  (matches .env.example DAGSTER_GRAPHQL_URL)
+  # Dagster — webserver
   # ---------------------------------------------------------------------------
   docker_dagster_webserver:
     build:
@@ -191,7 +190,7 @@ services:
       retries: 8
 
   # ---------------------------------------------------------------------------
-  # Dagster — daemon (schedule/sensor runner)
+  # Dagster — daemon
   # ---------------------------------------------------------------------------
   dagster-daemon:
     build:
@@ -219,7 +218,6 @@ services:
 
   # ---------------------------------------------------------------------------
   # Dagster code location — dataframe-level-anonymisation
-  # Built locally from cloned repo
   # ---------------------------------------------------------------------------
   dagster-anonymisation:
     build:
@@ -246,31 +244,36 @@ services:
 
   # ---------------------------------------------------------------------------
   # Dagster code location — field-level-pseudo-anonymisation
-  # Built locally from cloned repo
+  #
+  # DISABLED BY DEFAULT — image is ~3.5 GB (spaCy/torch) and has a known
+  # typer/spacy dependency conflict. To enable: uncomment the block below
+  # and add it to dagster/workspace.yaml
   # ---------------------------------------------------------------------------
-  dagster-pseudo-anonymisation:
-    build:
-      context: .
-      dockerfile: ./dagster-patches/Dockerfile.pseudo-anonymisation
-    container_name: simpl-dagster-pseudo-anonymisation
-    environment:
-      DAGSTER_POSTGRES_HOST: dagster-postgres
-      DAGSTER_POSTGRES_PORT: "5432"
-      DAGSTER_POSTGRES_DB: dagster
-      DAGSTER_POSTGRES_USER: dagster_user
-      DAGSTER_POSTGRES_PASSWORD: dagster_password
-    networks:
-      - dagster_network
-    restart: on-failure
-    healthcheck:
-      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost', 4000), timeout=5); s.close()"]
-      interval: 15s
-      timeout: 5s
-      start_period: 60s
-      retries: 8
+  # dagster-pseudo-anonymisation:
+  #   build:
+  #     context: .
+  #     dockerfile: ./dagster-patches/Dockerfile.pseudo-anonymisation
+  #   container_name: simpl-dagster-pseudo-anonymisation
+  #   environment:
+  #     DAGSTER_HOME: /data/dagster_home
+  #     HOME: /home/appuser
+  #     DAGSTER_POSTGRES_HOST: dagster-postgres
+  #     DAGSTER_POSTGRES_PORT: "5432"
+  #     DAGSTER_POSTGRES_DB: dagster
+  #     DAGSTER_POSTGRES_USER: dagster_user
+  #     DAGSTER_POSTGRES_PASSWORD: dagster_password
+  #   networks:
+  #     - dagster_network
+  #   restart: on-failure
+  #   healthcheck:
+  #     test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost', 4000), timeout=5); s.close()"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     start_period: 60s
+  #     retries: 8
 
   # ---------------------------------------------------------------------------
-  # Asset Orchestrator — built from cloned repo Dockerfile
+  # Asset Orchestrator
   # ---------------------------------------------------------------------------
   asset-orchestrator:
     build:
@@ -298,8 +301,7 @@ services:
       retries: 5
 
   # ---------------------------------------------------------------------------
-  # Seed — loads CSV data into the database after asset-orchestrator is healthy
-  # (Flyway has run migrations by this point so schema exists)
+  # Seed — loads CSV data after asset-orchestrator is healthy
   # ---------------------------------------------------------------------------
   seed:
     image: postgres:17.6
