@@ -83,10 +83,13 @@ On OrbStack, memory limits are managed automatically.
 git clone https://github.com/barrynauta/simpl-orchestration-local.git
 cd simpl-orchestration-local
 
-# 2. Run
+# 2. Make executable
+chmod +x ./start.sh
+
+# 3. Run
 ./start.sh
 
-# 3. Optional: also run Bruno API smoke tests after startup
+# 4. Optional: also run Bruno API smoke tests after startup
 ./start.sh --run-tests
 ```
 
