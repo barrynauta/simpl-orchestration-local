@@ -23,7 +23,8 @@ Built for exploration and demonstration — **not for production use.**
 - [Stopping](#stopping)
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
-
+- [Maintainer](#maintainer)
+- 
 ---
 
 ## ⚠️ Purpose & Scope
@@ -473,3 +474,9 @@ docker compose down -v
 docker compose build --no-cache dagster-anonymisation
 ./start.sh
 ```
+## Maintainer
+
+Barry Nauta — DG Connect, European Commission  
+Part of the [Simpl programme](https://digital-strategy.ec.europa.eu/en/policies/simpl) — the EU cloud-to-edge middleware initiative.
+
+Issues and pull requests welcome.
