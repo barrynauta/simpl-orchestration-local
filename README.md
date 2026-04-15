@@ -24,7 +24,7 @@ Built for exploration and demonstration — **not for production use.**
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
 - [Maintainer](#maintainer)
-- 
+  
 ---
 
 ## ⚠️ Purpose & Scope
