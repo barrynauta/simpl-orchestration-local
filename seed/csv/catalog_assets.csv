@@ -1,0 +1,7 @@
+original_id,asset_type,asset_description,provider_email
+urn:simpl:asset:health:patient-records-nl,DataSet,Anonymised patient records from Dutch hospitals — k-anonymity applied,provider-health@example.eu
+urn:simpl:asset:health:clinical-trials-de,DataSet,Clinical trial outcomes from German research institutes,provider-health-de@example.eu
+urn:simpl:asset:mobility:traffic-flow-be,DataSet,Real-time and historical traffic flow data — Brussels region,mobility-provider@example.eu
+urn:simpl:asset:energy:smart-meter-readings,DataSet,Aggregated smart meter readings — 15-minute intervals,energy-provider@example.eu
+urn:simpl:asset:finance:transaction-stats-q1,DataSet,Anonymised transaction statistics Q1 2026,finance-provider@example.eu
+urn:simpl:asset:env:air-quality-stations,DataSet,Air quality sensor readings — PM2.5 PM10 NO2 across 50 stations,env-provider@example.eu

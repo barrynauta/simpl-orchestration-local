@@ -1,0 +1,43 @@
+# =============================================================================
+# Dagster configuration — local Docker deployment
+# =============================================================================
+
+storage:
+  postgres:
+    postgres_db:
+      username: dagster_user
+      password: dagster_password
+      hostname: dagster-postgres
+      db_name: dagster
+      port: 5432
+
+local_artifact_storage:
+  module: dagster._core.storage.root
+  class: LocalArtifactStorage
+  config:
+    base_dir: /data/artifact_storage
+
+compute_logs:
+  module: dagster._core.storage.local_compute_log_manager
+  class: LocalComputeLogManager
+  config:
+    base_dir: /data/compute_logs
+
+run_launcher:
+  module: dagster._core.launcher.default_run_launcher
+  class: DefaultRunLauncher
+
+scheduler:
+  module: dagster._core.scheduler.scheduler
+  class: DagsterDaemonScheduler
+
+run_coordinator:
+  module: dagster._core.run_coordinator.default_run_coordinator
+  class: DefaultRunCoordinator
+
+sensors:
+  use_threads: true
+  num_workers: 4
+
+telemetry:
+  enabled: false

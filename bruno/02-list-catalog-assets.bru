@@ -1,0 +1,43 @@
+meta {
+  name: List Workflow Definitions for Seeded Asset
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/workflowDefinitions?assetId={{test_asset_id}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("returns workflow definitions for seeded asset", function() {
+    const body = res.getBody();
+    expect(Array.isArray(body)).to.be.true;
+    expect(body.length).to.be.greaterThan(0);
+  });
+
+  test("workflow definition has correct asset ID", function() {
+    const body = res.getBody();
+    expect(body[0].assetId).to.equal("urn:simpl:asset:health:patient-records-nl");
+  });
+
+  test("workflow definition has required fields", function() {
+    const body = res.getBody();
+    const def = body[0];
+    expect(def).to.have.property("id");
+    expect(def).to.have.property("workflowId");
+    expect(def).to.have.property("isActive");
+    expect(def).to.have.property("yamlConfiguration");
+  });
+
+  test("at least one definition is active", function() {
+    const body = res.getBody();
+    const active = body.filter(d => d.isActive === true);
+    expect(active.length).to.be.greaterThan(0);
+  });
+}

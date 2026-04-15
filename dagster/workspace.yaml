@@ -1,0 +1,12 @@
+# =============================================================================
+# Dagster workspace — local Docker deployment
+#
+# dataframe-level-anonymisation: fully working, local CSV jobs included
+# field-level-pseudo-anonymisation: disabled — dependency conflict with spacy/typer
+# =============================================================================
+
+load_from:
+  - grpc_server:
+      host: dagster-anonymisation
+      port: 4000
+      location_name: dataframe-level-anonymisation

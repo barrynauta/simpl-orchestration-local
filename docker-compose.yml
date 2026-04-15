@@ -1,0 +1,363 @@
+###############################################################################
+# Simpl Orchestration Platform — Local Evaluation Stack
+#
+# Usage:
+#   docker compose up                  # Start full stack
+#   docker compose --profile tests up  # Start stack + Bruno smoke tests
+#
+# Prerequisites:
+#   - Docker Desktop / OrbStack running
+#   - .env.local file present (copy from .env.local.example)
+#   - Repos cloned (run ./start.sh to do this automatically)
+###############################################################################
+
+networks:
+  dagster_network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  dagster-postgres-data:
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — asset-orchestrator database
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:17.6
+    container_name: simpl-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-asset_orchestrator}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PWD:-postgres}
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    networks:
+      - dagster_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — Dagster metadata database (separate instance, same network)
+  # ---------------------------------------------------------------------------
+  dagster-postgres:
+    image: postgres:17.6
+    container_name: simpl-dagster-postgres
+    environment:
+      POSTGRES_DB: dagster
+      POSTGRES_USER: dagster_user
+      POSTGRES_PASSWORD: dagster_password
+    ports:
+      - "5434:5432"
+    volumes:
+      - dagster-postgres-data:/var/lib/postgresql/data
+    networks:
+      - dagster_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dagster_user -d dagster"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Zookeeper (required by Kafka)
+  # ---------------------------------------------------------------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: simpl-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - dagster_network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z localhost 2181"]
+      start_period: 10s
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # Kafka
+  # ---------------------------------------------------------------------------
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: simpl-kafka
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LISTENERS: "INTERNAL://0.0.0.0:19092,EXTERNAL://0.0.0.0:9092"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:19092,EXTERNAL://localhost:9092"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+    ports:
+      - "9093:9092"
+    networks:
+      - dagster_network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z localhost 19092"]
+      start_period: 10s
+      interval: 5s
+      timeout: 10s
+      retries: 20
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Kafka UI
+  # ---------------------------------------------------------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: simpl-kafka-ui
+    ports:
+      - "9081:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: "Local Kafka"
+      KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS: "kafka:19092"
+      KAFKA_CLUSTERS_0_ZOOKEEPER: "zookeeper:2181"
+    networks:
+      - dagster_network
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Mailpit — local SMTP / email UI
+  # ---------------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: simpl-mailpit
+    ports:
+      - "1026:1025"   # SMTP
+      - "8027:8025"   # Web UI
+    networks:
+      - dagster_network
+
+  # ---------------------------------------------------------------------------
+  # OpenTelemetry Collector
+  # ---------------------------------------------------------------------------
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: simpl-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./scripts/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4320:4317"
+      - "4321:4318"
+    networks:
+      - dagster_network
+
+  # ---------------------------------------------------------------------------
+  # Dagster — webserver (GraphQL API + UI)
+  # Hostname: docker_dagster_webserver  (matches .env.example DAGSTER_GRAPHQL_URL)
+  # ---------------------------------------------------------------------------
+  docker_dagster_webserver:
+    build:
+      context: ./dagster
+      dockerfile: Dockerfile
+    container_name: simpl-dagster-webserver
+    command: ["dagster-webserver", "-h", "0.0.0.0", "-p", "3000", "-w", "/opt/dagster/dagster_home/workspace.yaml"]
+    ports:
+      - "3001:3000"
+    environment:
+      DAGSTER_POSTGRES_HOST: dagster-postgres
+      DAGSTER_POSTGRES_PORT: "5432"
+      DAGSTER_POSTGRES_DB: dagster
+      DAGSTER_POSTGRES_USER: dagster_user
+      DAGSTER_POSTGRES_PASSWORD: dagster_password
+    volumes:
+      - ./dagster/workspace.yaml:/opt/dagster/dagster_home/workspace.yaml:ro
+      - ./dagster/dagster.yaml:/opt/dagster/dagster_home/dagster.yaml:ro
+    networks:
+      - dagster_network
+    depends_on:
+      dagster-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/')"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 8
+
+  # ---------------------------------------------------------------------------
+  # Dagster — daemon (schedule/sensor runner)
+  # ---------------------------------------------------------------------------
+  dagster-daemon:
+    build:
+      context: ./dagster
+      dockerfile: Dockerfile
+    container_name: simpl-dagster-daemon
+    command: ["dagster-daemon", "run"]
+    environment:
+      DAGSTER_POSTGRES_HOST: dagster-postgres
+      DAGSTER_POSTGRES_PORT: "5432"
+      DAGSTER_POSTGRES_DB: dagster
+      DAGSTER_POSTGRES_USER: dagster_user
+      DAGSTER_POSTGRES_PASSWORD: dagster_password
+    volumes:
+      - ./dagster/workspace.yaml:/opt/dagster/dagster_home/workspace.yaml:ro
+      - ./dagster/dagster.yaml:/opt/dagster/dagster_home/dagster.yaml:ro
+    networks:
+      - dagster_network
+    depends_on:
+      dagster-postgres:
+        condition: service_healthy
+      docker_dagster_webserver:
+        condition: service_healthy
+    restart: on-failure
+
+  # ---------------------------------------------------------------------------
+  # Dagster code location — dataframe-level-anonymisation
+  # Built locally from cloned repo
+  # ---------------------------------------------------------------------------
+  dagster-anonymisation:
+    build:
+      context: .
+      dockerfile: ./dagster-patches/Dockerfile.anonymisation
+    container_name: simpl-dagster-anonymisation
+    environment:
+      DAGSTER_HOME: /data/dagster_home
+      HOME: /home/appuser
+      DAGSTER_POSTGRES_HOST: dagster-postgres
+      DAGSTER_POSTGRES_PORT: "5432"
+      DAGSTER_POSTGRES_DB: dagster
+      DAGSTER_POSTGRES_USER: dagster_user
+      DAGSTER_POSTGRES_PASSWORD: dagster_password
+    networks:
+      - dagster_network
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost', 4000), timeout=5); s.close()"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 8
+
+  # ---------------------------------------------------------------------------
+  # Dagster code location — field-level-pseudo-anonymisation
+  # Built locally from cloned repo
+  # ---------------------------------------------------------------------------
+  dagster-pseudo-anonymisation:
+    build:
+      context: .
+      dockerfile: ./dagster-patches/Dockerfile.pseudo-anonymisation
+    container_name: simpl-dagster-pseudo-anonymisation
+    environment:
+      DAGSTER_POSTGRES_HOST: dagster-postgres
+      DAGSTER_POSTGRES_PORT: "5432"
+      DAGSTER_POSTGRES_DB: dagster
+      DAGSTER_POSTGRES_USER: dagster_user
+      DAGSTER_POSTGRES_PASSWORD: dagster_password
+    networks:
+      - dagster_network
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost', 4000), timeout=5); s.close()"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 8
+
+  # ---------------------------------------------------------------------------
+  # Asset Orchestrator — built from cloned repo Dockerfile
+  # ---------------------------------------------------------------------------
+  asset-orchestrator:
+    build:
+      context: ./repos/asset-orchestrator
+      dockerfile: Dockerfile
+    container_name: simpl-asset-orchestrator
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.local
+    networks:
+      - dagster_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      docker_dagster_webserver:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/v1/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Seed — loads CSV data into the database after asset-orchestrator is healthy
+  # (Flyway has run migrations by this point so schema exists)
+  # ---------------------------------------------------------------------------
+  seed:
+    image: postgres:17.6
+    container_name: simpl-seed
+    volumes:
+      - ./seed:/seed:ro
+    networks:
+      - dagster_network
+    environment:
+      PGPASSWORD: ${DB_PWD:-postgres}
+    command: >
+      sh -c "
+        echo 'Waiting for asset-orchestrator to be ready...' &&
+        sleep 10 &&
+        echo 'Loading seed data...' &&
+        psql -h postgres -U ${DB_USER:-postgres} -d ${DB_NAME:-asset_orchestrator} -f /seed/seed.sql &&
+        echo 'Seed data loaded.'
+      "
+    depends_on:
+      asset-orchestrator:
+        condition: service_healthy
+    restart: no
+
+  # ---------------------------------------------------------------------------
+  # Bruno smoke tests — optional, activated via --profile tests
+  # ---------------------------------------------------------------------------
+  bruno-smoke-test:
+    image: node:20-alpine
+    container_name: simpl-bruno-tests
+    profiles: ["tests"]
+    working_dir: /bruno
+    volumes:
+      - ./bruno:/bruno:ro
+    command: >
+      sh -c "
+        npm install -g @usebruno/cli --silent 2>/dev/null &&
+        echo '' &&
+        echo '╔══════════════════════════════════════════════════════╗' &&
+        echo '║   Simpl API Smoke Tests — Bruno                      ║' &&
+        echo '╚══════════════════════════════════════════════════════╝' &&
+        echo '' &&
+        bru run --env local -r;
+        EXIT=$$?;
+        echo '';
+        if [ $$EXIT -eq 0 ]; then
+          echo '╔══════════════════════════════════════════════════════╗';
+          echo '║   ✅  All smoke tests passed.                         ║';
+          echo '╚══════════════════════════════════════════════════════╝';
+        else
+          echo '╔══════════════════════════════════════════════════════╗';
+          echo '║   ❌  One or more tests failed. See output above.     ║';
+          echo '╚══════════════════════════════════════════════════════╝';
+        fi;
+        exit $$EXIT
+      "
+    networks:
+      - dagster_network
+    depends_on:
+      asset-orchestrator:
+        condition: service_healthy
+    restart: no

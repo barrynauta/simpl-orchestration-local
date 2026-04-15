@@ -1,0 +1,6 @@
+repository_name,job_name,code_location
+dataframe_level_anonymisation,k_anonymity_job,anonymisation
+dataframe_level_anonymisation,l_diversity_job,anonymisation
+dataframe_level_anonymisation,t_closeness_job,anonymisation
+data_quality_checks,completeness_check_job,data-quality
+data_quality_checks,outlier_detection_job,data-quality

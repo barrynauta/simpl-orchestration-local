@@ -1,0 +1,43 @@
+meta {
+  name: Verify Seeded Run History
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/workflowDefinitions?assetId=urn:simpl:asset:health:clinical-trials-de
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("clinical trials asset has workflow definitions", function() {
+    const body = res.getBody();
+    expect(Array.isArray(body)).to.be.true;
+    expect(body.length).to.be.greaterThan(0);
+  });
+
+  test("definitions have association titles", function() {
+    const body = res.getBody();
+    body.forEach(def => {
+      expect(def.associationTitle).to.be.a("string").and.not.empty;
+    });
+  });
+
+  test("definitions have YAML configuration", function() {
+    const body = res.getBody();
+    body.forEach(def => {
+      expect(def.yamlConfiguration).to.not.be.null;
+    });
+  });
+
+  test("at least one definition is active", function() {
+    const body = res.getBody();
+    const active = body.filter(d => d.isActive === true);
+    expect(active.length).to.be.greaterThan(0);
+  });
+}

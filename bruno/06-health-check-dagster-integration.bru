@@ -1,0 +1,22 @@
+meta {
+  name: Dagster Integration Health
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/actuator/health
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("workflow engine component is UP", function() {
+    const body = res.getBody();
+    expect(body.status).to.equal("UP");
+  });
+}

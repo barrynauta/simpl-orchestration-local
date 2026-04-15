@@ -1,0 +1,11 @@
+storage:
+  postgres:
+    postgres_db:
+      username: dagster_user
+      password: dagster_password
+      hostname: dagster-postgres
+      db_name: dagster
+      port: 5432
+
+telemetry:
+  enabled: false

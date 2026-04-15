@@ -1,0 +1,34 @@
+meta {
+  name: List Workflows from Dagster
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/workflows
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("response has codeLocations field", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("codeLocations");
+    expect(Array.isArray(body.codeLocations)).to.be.true;
+  });
+
+  test("Dagster has registered code locations", function() {
+    const body = res.getBody();
+    expect(body.codeLocations.length).to.be.greaterThan(0);
+  });
+
+  test("anonymisation code location is present", function() {
+    const body = res.getBody();
+    const names = body.codeLocations.map(cl => cl.name);
+    expect(names).to.include("dataframe-level-anonymisation");
+  });
+}

@@ -1,0 +1,34 @@
+meta {
+  name: Create Catalog Asset
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/workflowDefinitions
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "assetId": "urn:simpl:asset:bruno-test:smoke-asset",
+    "assetType": "DataSet",
+    "assetDescription": "Bruno smoke test asset — created by automated tests",
+    "providerEmail": "bruno-test@simpl-local.eu"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("catalog asset creation returns 201", function() {
+    expect(res.status).to.equal(201);
+  });
+}

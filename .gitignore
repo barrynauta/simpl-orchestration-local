@@ -1,0 +1,11 @@
+# Cloned repos — never commit
+repos/
+
+# Credentials
+.env.local
+
+# Docker volumes / runtime artifacts
+*.log
+
+# macOS
+.DS_Store
