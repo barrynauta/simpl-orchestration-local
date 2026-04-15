@@ -57,7 +57,7 @@ For production deployment, follow the official documentation:
 |---|---|---|
 | Docker Desktop or OrbStack | Latest stable | Must be running before you start |
 | `git` | Any recent version | For cloning repositories |
-| RAM allocated to Docker | **16 GB** | 11 GB is not sufficient — the stack peaks at ~12–13 GB during build |
+| RAM allocated to Docker | **10 GB** | the stack peaks at ~8–9 GB during build |
 | Disk space | **20 GB free** | Images total ~8 GB; build cache adds more |
 | CPU | 4 cores recommended | Build time scales with core count |
 
@@ -69,7 +69,7 @@ By default Docker Desktop on Mac may be configured with insufficient memory:
 
 1. Open **Docker Desktop**
 2. Click the gear icon (Settings) → **Resources**
-3. Set **Memory** to at least **16 GB**
+3. Set **Memory** to at least **10 GB**
 4. Click **Apply & Restart**
 
 On OrbStack, memory limits are managed automatically.
