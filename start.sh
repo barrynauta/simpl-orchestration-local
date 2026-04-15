@@ -57,6 +57,17 @@ echo -e "${BLUE}║   Simpl Orchestration Platform — Local Launcher      ║${
 echo -e "${BLUE}╚══════════════════════════════════════════════════════╝${NC}"
 echo ""
 
+# --- Ensure .env.local exists -------------------------------------------------
+if [[ ! -f "$SCRIPT_DIR/.env.local" ]]; then
+  if [[ -f "$SCRIPT_DIR/.env.local.example" ]]; then
+    info ".env.local not found — generating from .env.local.example ..."
+    cp "$SCRIPT_DIR/.env.local.example" "$SCRIPT_DIR/.env.local"
+    success ".env.local created."
+  else
+    error ".env.local and .env.local.example both missing. Cannot start."
+  fi
+fi
+
 # --- Check prerequisites ------------------------------------------------------
 info "Checking prerequisites..."
 command -v docker >/dev/null 2>&1 || error "Docker is not installed or not on PATH."
