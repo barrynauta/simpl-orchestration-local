@@ -280,8 +280,7 @@ To browse and run tests interactively:
 3. Select the `local` environment (top right)
 4. Click **Run Collection** or run individual requests
 
-The `local` environment points to `http://localhost:8080/v1` — works when the stack is running on your Mac.
-
+**Note on environments:** The `local.bru` environment file sets `base_url` to `http://asset-orchestrator:8080/v1` — this is the Docker-internal hostname used when tests run inside the container network (e.g. via `./start.sh --run-tests`). When using Bruno desktop on your Mac, the stack is reachable at `http://localhost:8080/v1` instead. To avoid manually switching, you can duplicate `bruno/environments/local.bru` to `bruno/environments/desktop.bru` and change the `base_url` to `http://localhost:8080/v1`.
 ---
 
 ## Stopping
