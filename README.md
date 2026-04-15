@@ -83,13 +83,10 @@ On OrbStack, memory limits are managed automatically.
 git clone https://github.com/barrynauta/simpl-orchestration-local.git
 cd simpl-orchestration-local
 
-# 2. Make executable
-chmod +x ./start.sh
-
-# 3. Run
+# 2. Run
 ./start.sh
 
-# 4. Optional: also run Bruno API smoke tests after startup
+# 3. Optional: also run Bruno API smoke tests after startup
 ./start.sh --run-tests
 ```
 
@@ -171,10 +168,30 @@ After a successful run, the anonymised dataset is written to `/data/output_k_ano
 docker exec simpl-dagster-anonymisation cat /data/output_k_anonymity.csv
 ```
 
-The output contains the same columns with:
-- `Name` suppressed (removed or masked)
-- `Age` and `Gender` generalised into ranges/groups (e.g. `[25-30]`, `*`)
-- Records that cannot satisfy the privacy constraint suppressed entirely
+Example output with k=3:
+
+```
+Name,Age,Zipcode,Gender,Disease
+*,"[20, 30)",1000,Female,Diabetes
+*,"[30, 40)",1000,Male,Hypertension
+*,"[40, 50)",1050,Female,Diabetes
+*,"[30, 40)",1050,Male,Cancer
+*,"[40, 50)",2000,Female,Hypertension
+*,"[20, 30)",2050,Female,Cancer
+...
+```
+
+What happened to each column:
+
+| Column | Input | Output | Why |
+|---|---|---|---|
+| `Name` | `Alice` | `*` | Direct identifier — suppressed entirely |
+| `Age` | `28` | `[20, 30)` | Quasi-identifier — generalised into 10-year ranges by `simpl_age` hierarchy |
+| `Zipcode` | `1000` | `1000` | Not in quasi-identifiers config — passed through unchanged |
+| `Gender` | `Female` | `Female` | Already satisfies k without generalisation |
+| `Disease` | `Diabetes` | `Diabetes` | Sensitive attribute — preserved, protected by the k guarantee |
+
+Some records are dropped entirely — these were suppressed because they could not satisfy k=3 even after generalisation, within the configured 50% suppression budget.
 
 The **Metadata** tab of each step in the run view shows an anonymisation report with privacy metrics:
 
