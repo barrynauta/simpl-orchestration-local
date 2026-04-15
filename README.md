@@ -5,6 +5,27 @@ Built for exploration and demonstration — **not for production use.**
 
 ---
 
+## Table of Contents
+
+- [Purpose & Scope](#️-purpose--scope)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Service URLs](#service-urls)
+- [Seed Data](#seed-data)
+- [Dagster Quickstart](#dagster-quickstart)
+  - [What you will see](#what-you-will-see)
+  - [Pipeline input](#pipeline-input)
+  - [Pipeline output](#pipeline-output)
+  - [Running a job](#running-a-job--step-by-step)
+  - [Modifying the sample data](#modifying-the-sample-data)
+  - [Using S3 instead](#using-s3-instead)
+- [Bruno API Smoke Tests](#bruno-api-smoke-tests)
+- [Stopping](#stopping)
+- [Architecture](#architecture)
+- [Troubleshooting](#troubleshooting)
+
+---
+
 ## ⚠️ Purpose & Scope
 
 This repository provides a **sandbox environment** to explore the Simpl-Open asset orchestration platform on a local machine. It is intended for:
@@ -58,21 +79,18 @@ On OrbStack, memory limits are managed automatically.
 ## Quick Start
 
 ```bash
-# 1. Extract the deployment package into an empty folder
-mkdir simpl-orchestration-local && cd simpl-orchestration-local
-tar -xzf simpl-orchestration-local.tar.gz
+# 1. Clone this repository
+git clone https://github.com/barrynauta/simpl-orchestration-local.git
+cd simpl-orchestration-local
 
-# 2. Make the launcher executable (if needed)
-chmod +x start.sh
-
-# 3. Run
+# 2. Run
 ./start.sh
 
-# 4. Optional: also run Bruno API smoke tests after startup
+# 3. Optional: also run Bruno API smoke tests after startup
 ./start.sh --run-tests
 ```
 
-The first run takes **10–15 minutes** — Docker needs to clone the repositories and build several images from source. Subsequent runs use the layer cache and start in under a minute.
+The first run takes **10–15 minutes** — Docker needs to clone the source repositories and build several images. Subsequent runs use the layer cache and start in under a minute.
 
 ---
 
@@ -280,7 +298,8 @@ To browse and run tests interactively:
 3. Select the `local` environment (top right)
 4. Click **Run Collection** or run individual requests
 
-**Note on environments:** The `local.bru` environment file sets `base_url` to `http://asset-orchestrator:8080/v1` — this is the Docker-internal hostname used when tests run inside the container network (e.g. via `./start.sh --run-tests`). When using Bruno desktop on your Mac, the stack is reachable at `http://localhost:8080/v1` instead. To avoid manually switching, you can duplicate `bruno/environments/local.bru` to `bruno/environments/desktop.bru` and change the `base_url` to `http://localhost:8080/v1`.
+> **Note on environments:** The `local.bru` environment file sets `base_url` to `http://asset-orchestrator:8080/v1` — this is the Docker-internal hostname used when tests run inside the container network (e.g. via `./start.sh --run-tests`). When using Bruno desktop on your Mac, the stack is reachable at `http://localhost:8080/v1` instead. To avoid manually switching, you can duplicate `bruno/environments/local.bru` to `bruno/environments/desktop.bru` and change the `base_url` to `http://localhost:8080/v1`.
+
 ---
 
 ## Stopping
