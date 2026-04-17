@@ -37,6 +37,8 @@ This repository provides a **sandbox environment** to explore the Simpl-Open ass
 
 **This is not a production deployment.** Several components have been simplified or disabled for local use:
 
+> **On the asset-orchestrator:** It is included intentionally as the full integration layer between the SD-Tool and the Dagster workflow engine. Omitting it would mean triggering Dagster pipelines directly via its API — valid for pipeline-only evaluation, but not representative of how Simpl-Open works in production. Both approaches are valid depending on your evaluation goal.
+
 - **IAA / EU Login** — identity and access authentication is disabled; there is no credential validation or eIDAS integration
 - **Vault** — HashiCorp Vault is present in the stack but unused; secrets are passed as plain environment variables
 - **Kafka auth** — running in PLAINTEXT mode with no SASL authentication
@@ -255,18 +257,28 @@ Then launch the job. No restart needed.
 
 ### Using S3 instead
 
-The S3 variants (`k_anonymity_job_s3` etc.) are also registered. Add a MinIO container to the stack:
+The S3 variants (`k_anonymity_job_s3` etc.) are also registered. The S3 environment variables (`S3_ENDPOINT_URL`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`) are intentionally absent from `.env.local` — in this sandbox the S3 jobs are replaced by local CSV jobs that need no external storage.
+
+To use the S3 jobs, add a MinIO container to the stack:
 
 ```bash
 docker run -d --name minio \
-  --network <yourfolder>_dagster_network \
+  --network simpl-orchestration-local_dagster_network \
   -p 9000:9000 -p 9001:9001 \
   -e MINIO_ROOT_USER=minioadmin \
   -e MINIO_ROOT_PASSWORD=minioadmin \
   quay.io/minio/minio server /data --console-address ":9001"
 ```
 
-Upload a CSV via http://localhost:9001, then reference it in the `_s3` job Launchpad config.
+Then add the following to `.env.local`:
+
+```
+S3_ENDPOINT_URL=http://localhost:9000
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+```
+
+Upload a CSV via http://localhost:9001, then reference the bucket and key in the `_s3` job Launchpad config.
 
 ---
 
@@ -383,10 +395,10 @@ ERROR: failed to solve: process "/bin/sh -c pip install..." did not complete suc
 ```
 Or a container exits unexpectedly with code 137.
 
-**Cause:** Docker does not have enough memory allocated. The build peaks at 12–13 GB.  
-**Fix:** Open Docker Desktop → Settings → Resources → increase Memory to at least **16 GB** → Apply & Restart. Then run `docker compose down -v` and `./start.sh` again.
+**Cause:** Docker does not have enough memory allocated. The default stack peaks at ~8–9 GB during build.  
+**Fix:** Open Docker Desktop → Settings → Resources → increase Memory to at least **10 GB** → Apply & Restart. Then run `docker compose down -v` and `./start.sh` again.
 
-If you cannot allocate 16 GB, comment out the `dagster-pseudo-anonymisation` service in `docker-compose.yml` — it is the largest image (~3.5 GB) and not required for the primary evaluation.
+The `dagster-pseudo-anonymisation` service is already disabled by default. If you have enabled it, note that it adds ~3.5 GB and is not required for the primary evaluation.
 
 ---
 
@@ -477,6 +489,9 @@ docker compose down -v
 docker compose build --no-cache dagster-anonymisation
 ./start.sh
 ```
+
+---
+
 ## Maintainer
 
 Barry Nauta — DG Connect, European Commission  
